@@ -99,9 +99,16 @@ def filter_sample_ids_from_coords(coords_ids, coords, valid_sample_ids,
 def sort_sample_ids(data, headers, header_name):
     """ """
     interesting_index = headers.index(header_name)
-    sort_lambda = lambda x: x[interesting_index]
 
-    return [line[0] for line in sorted(data, key=sort_lambda)]
+    print 'The interesting index is %s ' % interesting_index
+    sort_lambda = lambda x: float(x[interesting_index])
+
+    sorted_mapping_data = sorted(data, key=sort_lambda)
+
+    # for element in sorted_mapping_data:
+    #     print 'element %s' % element[0]
+
+    return [line[0] for line in sorted_mapping_data]
 
 def sort_coords(coords_ids, coords, sorted_ids):
     """ """
