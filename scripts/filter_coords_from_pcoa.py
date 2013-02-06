@@ -26,16 +26,19 @@ script_info['required_options'] = [
         ' of coordinates'),
 ]
 script_info['optional_options'] = [
- # Example optional option
-make_option('-m','--mapping_fp',type="existing_filepath", help='mapping '
-    'file corresponding to the coords file', default=None),
-make_option('-o','--output_fp',type="new_filepath",help='the output directory '
-    'with all the coordinate files resulting of the filtering [default: '
-    '%default]', default='filtered_pc.txt'),
-make_option('-s','--valid_states',type='string',help='string containing valid '
-    'states, e.g. "STUDY_NAME:DOB"', default=None),
-make_option('--negate',default=False, action='store_true', help='discard '
-    'specified samples (instead of keeping them) [default: %default]")]')
+    # Example optional option
+    make_option('-m','--mapping_fp',type="existing_filepath", help='mapping '
+        'file corresponding to the coords file', default=None),
+    make_option('-o','--output_fp',type="new_filepath",help='the output '
+        'directory with all the coordinate files resulting of the filtering '
+        '[default: %default]', default='filtered_pc.txt'),
+    make_option('-s','--valid_states',type='string',help='string containing '
+        'valid states, e.g. "STUDY_NAME:DOB"', default=None),
+    make_option('--negate',default=False, action='store_true', help='discard '
+        'specified samples (instead of keeping them) [default: %default]")]'),
+    make_option('--mapping_header_name',type='string',help='string containing '
+        'the name of the column in the metadata mapping field to sort the '
+        'coordinates', default=None)
 ]
 script_info['version'] = __version__
 
@@ -49,9 +52,12 @@ def main():
     output_fp = opts.output_fp
     valid_states = opts.valid_states
     negate = opts.negate
+    mapping_header_name = opts.mapping_header_name
 
     coords_ids, coords, eigen_values, pct_exp = parse_coords(open(coords_fp,
         'U'))
+
+    data, headers, _ = parse_mapping_file(open(mapping_fp, 'U'))
 
     if mapping_fp and valid_states:
         valid_sample_ids = sample_ids_from_metadata_description(
@@ -60,11 +66,16 @@ def main():
     valid_coords_ids, valid_coords = filter_sample_ids_from_coords(coords_ids,
         coords, valid_sample_ids, negate)
 
+    if mapping_header_name:
+        sorted_sample_ids = sort_sample_ids(data, headers, mapping_header_name)
+        sorted_coord_ids, sorted_coords = sort_coords(valid_coords_ids,
+            valid_coords, sorted_sample_ids)
+        valid_coords_ids, valid_coords = sorted_coord_ids, sorted_coords
+
     lines = format_coords(valid_coords_ids, valid_coords, eigen_values, pct_exp)
     fd = open(output_fp, 'w')
     fd.writelines(lines)
     fd.close
-
 
 def filter_sample_ids_from_coords(coords_ids, coords, valid_sample_ids,
         negate=False):
@@ -85,6 +96,26 @@ def filter_sample_ids_from_coords(coords_ids, coords, valid_sample_ids,
 
     return out_coord_ids, out_coords
 
+def sort_sample_ids(data, headers, header_name):
+    """ """
+    interesting_index = headers.index(header_name)
+    sort_lambda = lambda x: x[interesting_index]
+
+    return [line[0] for line in sorted(data, key=sort_lambda)]
+
+def sort_coords(coords_ids, coords, sorted_ids):
+    """ """
+    sorted_coords, sorted_sids = [], []
+
+    for single_id in sorted_ids:
+        try:
+            lost_index = coords_ids.index(single_id)
+        except ValueError:
+            continue
+        sorted_coords.append(coords[lost_index])
+        sorted_sids.append(single_id)
+
+    return sorted_sids, sorted_coords
 
 if __name__ == "__main__":
     main()
