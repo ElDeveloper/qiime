@@ -3,7 +3,7 @@
 from __future__ import division
 
 __author__ = "AUTHOR_NAME"
-__copyright__ = "Copyright 2014, The Qiita Project"
+__copyright__ = "Copyright 2014, The QIIME Project"
 __credits__ = ["Emily Jean Of The TerAvest", "Yoshiki Vazquez Baeza"]
 __license__ = "GPL"
 __version__ = "0.0.1-dev"
