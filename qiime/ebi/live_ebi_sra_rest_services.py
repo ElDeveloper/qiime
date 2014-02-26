@@ -2,7 +2,7 @@
 
 __author__ = "Doug Wendel"
 __copyright__ = "Copyright 2014, The QIIME project"
-__credits__ = ["Doug Wendel"]
+__credits__ = ["Doug Wendel", "Emily TerAvest"]
 __license__ = "GPL"
 __version__ = "1.8.0-dev"
 __maintainer__ = "Doug Wendel"
@@ -10,19 +10,15 @@ __email__ = "wendel@colorado.edu"
 __status__ = "Development"
 
 from os.path import basename, exists, join
-import sys
-import httplib, urllib
+import httplib
 import hashlib
-from ftplib import FTP
 from subprocess import Popen, PIPE, STDOUT
 from os.path import split
-from os import chmod
-from sys import stdout
 from datetime import date, timedelta
 
-from base_rest_services import BaseRestServices
-from sequence_file_writer import SequenceFileWriterFactory
-from credentials import Credentials
+from qiime.ebi.base_rest_services import BaseRestServices
+from qiime.ebi.sequence_file_writer import SequenceFileWriterFactory
+
 
 class SequenceFile(object):
     def __init__(self, file_path, file_id, checksum):
@@ -32,7 +28,7 @@ class SequenceFile(object):
 
 class LiveEBISRARestServices(BaseRestServices):
     
-    def __init__(self, study_id, web_app_user_id, root_dir, debug = False):
+    def __init__(self, study_id, web_app_user_id, root_dir,  ebi_user_id, ebi_user_pass, ebi_rest_access_key, debug = False):
         """ Sets up initial values
         
         Sets up file paths, urls, and other necessary details for submission to the EBI SRA
@@ -58,9 +54,9 @@ class LiveEBISRARestServices(BaseRestServices):
         
         # EBI FTP info
         self.ftp_url = 'ftp.sra.ebi.ac.uk'
-        self.ftp_user = Credentials.ebi_user_id
-        self.ftp_pass = Credentials.ebi_user_pass
-        self.ebi_rest_access_key = Credentials.ebi_rest_access_key
+        self.ftp_user = ebi_user_id
+        self.ftp_pass = ebi_user_pass
+        self.ebi_rest_access_key = ebi_rest_access_key
         
         # Open the FTP connection, leave open for efficiency
         #self.ftp = FTP(self.ftp_url, self.ftp_user, self.ftp_pass)
@@ -251,9 +247,10 @@ class LiveEBISRARestServices(BaseRestServices):
     def parse_ebi_output(self):
         pass
                 
-    def generate_metadata_files(self, debug = True, action_type = 'VALIDATE'):
+    def generate_metadata_strings(self, debug = True, action_type = 'VALIDATE'):
         """
-        Submits data to EBI SRA via REST services.
+        Generates 5 strings for EBI Submission
+            study, experiement, project, sample, submission, run 
         
         action_type can be VALIDATE or ADD. Add will validate and add. VALIDATE will only validate
 
@@ -280,14 +277,13 @@ class LiveEBISRARestServices(BaseRestServices):
         self.logger.log_entry('------------------> STUDY <------------------')
         
         # Get the study info
-        study_file = open(self.study_file_path, 'w')
-
+        study_strings = []
         study_alias = 'qiime_study_{0}'.format(str(self.study_id))
-        study_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        study_file.write('<STUDY_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.study.xsd">\n')
-        study_file.write('    <STUDY alias="{0}" center_name="CCME-COLORADO">\n'.format(study_alias))
-        study_file.write('        <DESCRIPTOR>\n')
-        study_file.write('            <STUDY_TITLE>{0}</STUDY_TITLE>\n'.format(study_info['study_title']))
+        study_strings.append('<?xml version="1.0" encoding="UTF-8"?>\n')
+        study_strings.append('<STUDY_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.study.xsd">\n')
+        study_strings.append('    <STUDY alias="{0}" center_name="CCME-COLORADO">\n'.format(study_alias))
+        study_strings.append('        <DESCRIPTOR>\n')
+        study_strings.append('            <STUDY_TITLE>{0}</STUDY_TITLE>\n'.format(study_info['study_title']))
         
         # Determine the study type
         existing_study_type = 'Other'
@@ -295,12 +291,12 @@ class LiveEBISRARestServices(BaseRestServices):
             result = self.controlled_vocab_lookup(self.existing_study_type, study_info['investigation_type'])
             if result is not None:
                 existing_study_type = result
-        study_file.write('            <STUDY_TYPE existing_study_type="{0}"/>\n'.format(existing_study_type))
+        study_strings.append('            <STUDY_TYPE existing_study_type="{0}"/>\n'.format(existing_study_type))
         study_abstract = self.clean_whitespace(study_info['study_abstract'])
         study_abstract = self.clean_text_value(study_abstract)
-        study_file.write('            <STUDY_ABSTRACT>{0}</STUDY_ABSTRACT>\n'.format(study_abstract))
-        study_file.write('        </DESCRIPTOR>\n')
-        study_file.write('        <STUDY_ATTRIBUTES>\n')
+        study_strings.append('            <STUDY_ABSTRACT>{0}</STUDY_ABSTRACT>\n'.format(study_abstract))
+        study_strings.append('        </DESCRIPTOR>\n')
+        study_strings.append('        <STUDY_ATTRIBUTES>\n')
     
         # Write out the remaining study fields
         for item in study_info:
@@ -309,18 +305,20 @@ class LiveEBISRARestServices(BaseRestServices):
             if item == 'samples':
                 continue
                 
-            study_file.write('            <STUDY_ATTRIBUTE>\n')
-            study_file.write('                <TAG>{0}</TAG>\n'.format(item))
+            study_strings.append('            <STUDY_ATTRIBUTE>\n')
+            study_strings.append('                <TAG>{0}</TAG>\n'.format(item))
             attribute_value = self.clean_whitespace(str(study_info[item]))
             attribute_value = self.clean_text_value(attribute_value)
-            study_file.write('                <VALUE>{0}</VALUE>\n'.format(attribute_value))
-            study_file.write('            </STUDY_ATTRIBUTE>\n')
+            study_strings.append('                <VALUE>{0}</VALUE>\n'.format(attribute_value))
+            study_strings.append('            </STUDY_ATTRIBUTE>\n')
         
-        study_file.write('        </STUDY_ATTRIBUTES>\n')
-        study_file.write('    </STUDY>\n')
-        study_file.write('</STUDY_SET>\n')
+        study_strings.append('        </STUDY_ATTRIBUTES>\n')
+        study_strings.append('    </STUDY>\n')
+        study_strings.append('</STUDY_SET>\n')
     
-        study_file.close()
+        #we are leaving the \n at the end of each line in case there was a  
+        #partial line written 
+        study_string = ''.join(study_strings)
         
         ######################################################
         #### Sample XML
@@ -331,38 +329,38 @@ class LiveEBISRARestServices(BaseRestServices):
         samples = study_info['samples']
         
         # Reference to the sample file
-        sample_file = open(self.sample_file_path, 'w')
-        sample_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        sample_file.write('<SAMPLE_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.sample.xsd">\n')
+        sample_strings = []
+        sample_strings.append('<?xml version="1.0" encoding="UTF-8"?>\n')
+        sample_strings.append('<SAMPLE_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.sample.xsd">\n')
         
         # Reference to the experiment file
-        experiment_file = open(self.experiment_file_path, 'w')
-        experiment_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        experiment_file.write('<EXPERIMENT_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.experiment.xsd">\n')
+        experiment_strings = []
+        experiment_strings.append('<?xml version="1.0" encoding="UTF-8"?>\n')
+        experiment_strings.append('<EXPERIMENT_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.experiment.xsd">\n')
         
         # Reference to the run file
-        run_file = open(self.run_file_path, 'w')
-        run_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        run_file.write('<RUN_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.run.xsd">\n')
+        run_strings = []
+        run_strings.append('<?xml version="1.0" encoding="UTF-8"?>\n')
+        run_strings.append('<RUN_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.run.xsd">\n')
 
         # For every sample, get the details and write them to the sample file
         for sample_dict in samples:
             sample_alias = 'qiime_study_{0}:{1}'.format(str(self.study_id), sample_dict['sample_name'])
-            sample_file.write('    <SAMPLE alias="{0}" center_name="CCME-COLORADO"> \n'.format(sample_alias))
-            sample_file.write('        <TITLE>{0}</TITLE>\n'.format(sample_dict['sample_name']))
-            sample_file.write('        <SAMPLE_NAME>\n')
+            sample_strings.append('    <SAMPLE alias="{0}" center_name="CCME-COLORADO"> \n'.format(sample_alias))
+            sample_strings.append('        <TITLE>{0}</TITLE>\n'.format(sample_dict['sample_name']))
+            sample_strings.append('        <SAMPLE_NAME>\n')
             if 'taxon_id' in sample_dict:
                 taxon_id = sample_dict['taxon_id']
             else:
                 taxon_id = 'unknown'
-            sample_file.write('            <TAXON_ID>{0}</TAXON_ID>\n'.format(taxon_id))
-            sample_file.write('        </SAMPLE_NAME>\n')
+            sample_strings.append('            <TAXON_ID>{0}</TAXON_ID>\n'.format(taxon_id))
+            sample_strings.append('        </SAMPLE_NAME>\n')
             if 'description' in sample_dict:
                 description = self.clean_text_value(sample_dict['description'])
             else:
                 description = 'unknown'
-            sample_file.write('        <DESCRIPTION>{0}</DESCRIPTION>\n'.format(description))
-            sample_file.write('        <SAMPLE_ATTRIBUTES>\n')
+            sample_strings.append('        <DESCRIPTION>{0}</DESCRIPTION>\n'.format(description))
+            sample_strings.append('        <SAMPLE_ATTRIBUTES>\n')
 
             for sample_key in sample_dict:
                 if sample_key == 'preps':
@@ -407,15 +405,15 @@ class LiveEBISRARestServices(BaseRestServices):
                         row_number = str(prep_dict['row_number'])
                         
                         experiment_alias = 'qiime_experiment_{0}:{1}:{2}'.format(study_id, sample_id, row_number)
-                        experiment_file.write('   <EXPERIMENT alias="{0}" center_name="CCME-COLORADO">\n'.format(experiment_alias))
-                        experiment_file.write('       <TITLE>{0}</TITLE>\n'.format(experiment_alias))
-                        experiment_file.write('       <STUDY_REF refname="{0}"/>\n'.format(study_alias))
-                        experiment_file.write('       <DESIGN>\n')
+                        experiment_strings.append('   <EXPERIMENT alias="{0}" center_name="CCME-COLORADO">\n'.format(experiment_alias))
+                        experiment_strings.append('       <TITLE>{0}</TITLE>\n'.format(experiment_alias))
+                        experiment_strings.append('       <STUDY_REF refname="{0}"/>\n'.format(study_alias))
+                        experiment_strings.append('       <DESIGN>\n')
                         clean_value = self.clean_text_value(prep_dict['experiment_design_description'])
-                        experiment_file.write('           <DESIGN_DESCRIPTION>{0}</DESIGN_DESCRIPTION>\n'.format(clean_value))
-                        experiment_file.write('           <SAMPLE_DESCRIPTOR refname="{0}"/>\n'.format(sample_alias))
-                        experiment_file.write('           <LIBRARY_DESCRIPTOR>\n')
-                        experiment_file.write('               <LIBRARY_NAME>{0}</LIBRARY_NAME>\n'.format(sample_dict['sample_name'] + ':' + row_number))
+                        experiment_strings.append('           <DESIGN_DESCRIPTION>{0}</DESIGN_DESCRIPTION>\n'.format(clean_value))
+                        experiment_strings.append('           <SAMPLE_DESCRIPTOR refname="{0}"/>\n'.format(sample_alias))
+                        experiment_strings.append('           <LIBRARY_DESCRIPTOR>\n')
+                        experiment_strings.append('               <LIBRARY_NAME>{0}</LIBRARY_NAME>\n'.format(sample_dict['sample_name'] + ':' + row_number))
 
                         # Figure out the library_strategy
                         library_strategy = 'OTHER'
@@ -428,47 +426,47 @@ class LiveEBISRARestServices(BaseRestServices):
                             elif investigation_type == 'mimarks-survey':
                                 library_strategy = 'AMPLICON'
                                 library_selection = 'PCR'
-                        experiment_file.write('               <LIBRARY_STRATEGY>{0}</LIBRARY_STRATEGY>\n'.format(library_strategy))
-                        experiment_file.write('               <LIBRARY_SOURCE>{0}</LIBRARY_SOURCE>\n'.format(library_source))
-                        experiment_file.write('               <LIBRARY_SELECTION>PCR</LIBRARY_SELECTION>\n')
+                        experiment_strings.append('               <LIBRARY_STRATEGY>{0}</LIBRARY_STRATEGY>\n'.format(library_strategy))
+                        experiment_strings.append('               <LIBRARY_SOURCE>{0}</LIBRARY_SOURCE>\n'.format(library_source))
+                        experiment_strings.append('               <LIBRARY_SELECTION>PCR</LIBRARY_SELECTION>\n')
 
-                        experiment_file.write('               <LIBRARY_LAYOUT>\n')
-                        experiment_file.write('                   <SINGLE/>\n')
-                        experiment_file.write('               </LIBRARY_LAYOUT>\n')
-                        experiment_file.write('               <LIBRARY_CONSTRUCTION_PROTOCOL>{0}</LIBRARY_CONSTRUCTION_PROTOCOL>\n'.format(self.clean_text_value(prep_dict['library_construction_protocol'])))
-                        experiment_file.write('           </LIBRARY_DESCRIPTOR>\n')
+                        experiment_strings.append('               <LIBRARY_LAYOUT>\n')
+                        experiment_strings.append('                   <SINGLE/>\n')
+                        experiment_strings.append('               </LIBRARY_LAYOUT>\n')
+                        experiment_strings.append('               <LIBRARY_CONSTRUCTION_PROTOCOL>{0}</LIBRARY_CONSTRUCTION_PROTOCOL>\n'.format(self.clean_text_value(prep_dict['library_construction_protocol'])))
+                        experiment_strings.append('           </LIBRARY_DESCRIPTOR>\n')
                         
                         # Spot descriptor required for LS454
                         if platform == 'LS454':
-                            experiment_file.write('        <SPOT_DESCRIPTOR>\n')
-                            experiment_file.write('            <SPOT_DECODE_SPEC>\n')
-                            experiment_file.write('                <READ_SPEC>\n')
-                            experiment_file.write('                    <READ_INDEX>0</READ_INDEX>\n')
-                            experiment_file.write('                    <READ_CLASS>Application Read</READ_CLASS>\n')
-                            experiment_file.write('                    <READ_TYPE>Forward</READ_TYPE>\n')
-                            experiment_file.write('                    <BASE_COORD>1</BASE_COORD>\n')
-                            experiment_file.write('                </READ_SPEC>\n')
-                            experiment_file.write('            </SPOT_DECODE_SPEC>\n')
-                            experiment_file.write('        </SPOT_DESCRIPTOR>\n')
+                            experiment_strings.append('        <SPOT_DESCRIPTOR>\n')
+                            experiment_strings.append('            <SPOT_DECODE_SPEC>\n')
+                            experiment_strings.append('                <READ_SPEC>\n')
+                            experiment_strings.append('                    <READ_INDEX>0</READ_INDEX>\n')
+                            experiment_strings.append('                    <READ_CLASS>Application Read</READ_CLASS>\n')
+                            experiment_strings.append('                    <READ_TYPE>Forward</READ_TYPE>\n')
+                            experiment_strings.append('                    <BASE_COORD>1</BASE_COORD>\n')
+                            experiment_strings.append('                </READ_SPEC>\n')
+                            experiment_strings.append('            </SPOT_DECODE_SPEC>\n')
+                            experiment_strings.append('        </SPOT_DESCRIPTOR>\n')
                         
-                        experiment_file.write('       </DESIGN>\n')
+                        experiment_strings.append('       </DESIGN>\n')
                         
-                        experiment_file.write('       <PLATFORM>\n')
-                        experiment_file.write('           <{0}>\n'.format(platform))
-                        experiment_file.write('               <INSTRUMENT_MODEL>unspecified</INSTRUMENT_MODEL>\n')
-                        experiment_file.write('           </{0}>\n'.format(platform))                       
-                        experiment_file.write('       </PLATFORM>\n')
+                        experiment_strings.append('       <PLATFORM>\n')
+                        experiment_strings.append('           <{0}>\n'.format(platform))
+                        experiment_strings.append('               <INSTRUMENT_MODEL>unspecified</INSTRUMENT_MODEL>\n')
+                        experiment_strings.append('           </{0}>\n'.format(platform))                       
+                        experiment_strings.append('       </PLATFORM>\n')
                                                 
-                        experiment_file.write('       <EXPERIMENT_ATTRIBUTES>\n')
+                        experiment_strings.append('       <EXPERIMENT_ATTRIBUTES>\n')
                         for prep_key in prep_dict:                        
-                            experiment_file.write('          <EXPERIMENT_ATTRIBUTE>\n')
-                            experiment_file.write('             <TAG>{0}</TAG>\n'.format(prep_key))
+                            experiment_strings.append('          <EXPERIMENT_ATTRIBUTE>\n')
+                            experiment_strings.append('             <TAG>{0}</TAG>\n'.format(prep_key))
                             clean_value = self.clean_text_value(prep_dict[prep_key])
-                            experiment_file.write('             <VALUE>{0}</VALUE>\n'.format(clean_value))
-                            experiment_file.write('          </EXPERIMENT_ATTRIBUTE>\n')
-                        experiment_file.write('       </EXPERIMENT_ATTRIBUTES>\n')
+                            experiment_strings.append('             <VALUE>{0}</VALUE>\n'.format(clean_value))
+                            experiment_strings.append('          </EXPERIMENT_ATTRIBUTE>\n')
+                        experiment_strings.append('       </EXPERIMENT_ATTRIBUTES>\n')
                         
-                        experiment_file.write('   </EXPERIMENT>\n')
+                        experiment_strings.append('   </EXPERIMENT>\n')
                         
                         checksum = None
                         file_identifier = ''
@@ -479,6 +477,7 @@ class LiveEBISRARestServices(BaseRestServices):
                             checksum = None
                             
                             # Check to see if the md5 has already been calculated and skip if already done
+                            #this doesn't check that checksum is accurate if it exists
                             if exists(checksum_file_path):
                                 with open(checksum_file_path) as f:
                                     checksum = f.read()
@@ -510,36 +509,36 @@ class LiveEBISRARestServices(BaseRestServices):
                             continue
                         
                         # The run file references
-                        run_file.write('    <RUN alias="{0}_run" center_name="CCME-COLORADO">\n'.format(basename(file_path)))
-                        run_file.write('        <EXPERIMENT_REF refname="{0}"/>\n'.format(experiment_alias))
-                        run_file.write('        <DATA_BLOCK>\n')
-                        run_file.write('            <FILES>\n')
-                        run_file.write('                <FILE filename="{0}" filetype="{1}" quality_scoring_system="{2}" checksum_method="MD5" checksum="{3}"/>\n'.format(basename(file_path), file_writer.file_extension, 'phred', checksum))
-                        run_file.write('            </FILES>\n')
-                        run_file.write('        </DATA_BLOCK>\n')
-                        run_file.write('    </RUN>\n')
+                        run_strings.append('    <RUN alias="{0}_run" center_name="CCME-COLORADO">\n'.format(basename(file_path)))
+                        run_strings.append('        <EXPERIMENT_REF refname="{0}"/>\n'.format(experiment_alias))
+                        run_strings.append('        <DATA_BLOCK>\n')
+                        run_strings.append('            <FILES>\n')
+                        run_strings.append('                <FILE filename="{0}" filetype="{1}" quality_scoring_system="{2}" checksum_method="MD5" checksum="{3}"/>\n'.format(basename(file_path), file_writer.file_extension, 'phred', checksum))
+                        run_strings.append('            </FILES>\n')
+                        run_strings.append('        </DATA_BLOCK>\n')
+                        run_strings.append('    </RUN>\n')
                                         
                 else:
-                    sample_file.write('            <SAMPLE_ATTRIBUTE>\n')
-                    sample_file.write('                <TAG>{0}</TAG>\n'.format(str(sample_key)))
+                    sample_strings.append('            <SAMPLE_ATTRIBUTE>\n')
+                    sample_strings.append('                <TAG>{0}</TAG>\n'.format(str(sample_key)))
                     clean_value = self.clean_text_value(str(sample_dict[sample_key]))
-                    sample_file.write('                <VALUE>{0}</VALUE>\n'.format(clean_value))
-                    sample_file.write('            </SAMPLE_ATTRIBUTE>\n')
+                    sample_strings.append('                <VALUE>{0}</VALUE>\n'.format(clean_value))
+                    sample_strings.append('            </SAMPLE_ATTRIBUTE>\n')
             
-            sample_file.write('        </SAMPLE_ATTRIBUTES>\n')
-            sample_file.write('    </SAMPLE>\n')
+            sample_strings.append('        </SAMPLE_ATTRIBUTES>\n')
+            sample_strings.append('    </SAMPLE>\n')
         
         # Close the sample file
-        sample_file.write('</SAMPLE_SET>\n')
-        sample_file.close()
+        sample_strings.append('</SAMPLE_SET>\n')
+        sample_string = ''.join(sample_strings)
         
         # Close the prep file
-        experiment_file.write('</EXPERIMENT_SET>\n')
-        experiment_file.close()
+        experiment_strings.append('</EXPERIMENT_SET>\n')
+        experiment_string = ''.join(experiment_strings)
         
         # Close the run file
-        run_file.write('</RUN_SET>')
-        run_file.close()
+        run_strings.append('</RUN_SET>')
+        run_string = ''.join(run_strings)
         
         ######################################################
         #### Submission XML
@@ -549,57 +548,57 @@ class LiveEBISRARestServices(BaseRestServices):
         
         # Actions are either ADD or VALIDATE. ADD validates and adds data. VALIDATE is validate only
     
-        submission_file = open(self.submission_file_path, 'w')
-        submission_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        submission_file.write('<SUBMISSION_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.submission.xsd">\n')
-        submission_file.write('<SUBMISSION alias="qiime_submission_{0}" center_name="CCME-COLORADO">\n'.format(str(self.study_id)))
-        submission_file.write('<ACTIONS>\n')
-        submission_file.write('    <ACTION>\n')
-        submission_file.write('        <{0} source="{1}" schema="study"/>\n'.format(action_type, basename(self.study_file_path)))
-        submission_file.write('    </ACTION>\n')
-        submission_file.write('    <ACTION>\n')
-        submission_file.write('        <{0} source="{1}" schema="sample"/>\n'.format(action_type, basename(self.sample_file_path)))
-        submission_file.write('    </ACTION>\n')
-        submission_file.write('    <ACTION>\n')
-        submission_file.write('        <{0} source="{1}" schema="experiment"/>\n'.format(action_type, basename(self.experiment_file_path)))
-        submission_file.write('    </ACTION>\n')
-        submission_file.write('    <ACTION>\n')
-        submission_file.write('        <{0} source="{1}" schema="run"/>\n'.format(action_type, basename(self.run_file_path)))
-        submission_file.write('    </ACTION>\n')
+        submission_strings = []
+        submission_strings.append('<?xml version="1.0" encoding="UTF-8"?>\n')
+        submission_strings.append('<SUBMISSION_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ftp://ftp.sra.ebi.ac.uk/meta/xsd/sra_1_3/SRA.submission.xsd">\n')
+        submission_strings.append('<SUBMISSION alias="qiime_submission_{0}" center_name="CCME-COLORADO">\n'.format(str(self.study_id)))
+        submission_strings.append('<ACTIONS>\n')
+        submission_strings.append('    <ACTION>\n')
+        submission_strings.append('        <{0} source="{1}" schema="study"/>\n'.format(action_type, basename(self.study_file_path)))
+        submission_strings.append('    </ACTION>\n')
+        submission_strings.append('    <ACTION>\n')
+        submission_strings.append('        <{0} source="{1}" schema="sample"/>\n'.format(action_type, basename(self.sample_file_path)))
+        submission_strings.append('    </ACTION>\n')
+        submission_strings.append('    <ACTION>\n')
+        submission_strings.append('        <{0} source="{1}" schema="experiment"/>\n'.format(action_type, basename(self.experiment_file_path)))
+        submission_strings.append('    </ACTION>\n')
+        submission_strings.append('    <ACTION>\n')
+        submission_strings.append('        <{0} source="{1}" schema="run"/>\n'.format(action_type, basename(self.run_file_path)))
+        submission_strings.append('    </ACTION>\n')
 
         # Only add the hold attribute if we are actually adding data to EBI. I don't know this for
         # certain but it seems that having it in there during validation causes certain entities to
         # be created on their end, causing the actual ADD operaiton to fail even if data validates.
         if action_type == 'ADD':
-            submission_file.write('    <ACTION>\n')
+            submission_strings.append('    <ACTION>\n')
             one_year = str(date.today() + timedelta(365))
-            submission_file.write('         <HOLD HoldUntilDate="{0}"/>\n'.format(one_year))
-            submission_file.write('    </ACTION>\n')
+            submission_strings.append('         <HOLD HoldUntilDate="{0}"/>\n'.format(one_year))
+            submission_strings.append('    </ACTION>\n')
 
-        submission_file.write('</ACTIONS>\n')
+        submission_strings.append('</ACTIONS>\n')
 
         # Sequence files here?
-        #submission_file.write('<FILES>\n')
+        #submission_strings.append('<FILES>\n')
         #for seqs_file in self.file_list:
-        #    submission_file.write('    <FILE checksum="{0}" filename="{1}" checksum_method="MD5"/>\n'.format(seqs_file.checksum, basename(seqs_file.file_path)))
-        #submission_file.write('</FILES>\n')
+        #    submission_strings.append('    <FILE checksum="{0}" filename="{1}" checksum_method="MD5"/>\n'.format(seqs_file.checksum, basename(seqs_file.file_path)))
+        #submission_strings.append('</FILES>\n')
         
-        submission_file.write('</SUBMISSION>\n')
-        submission_file.write('</SUBMISSION_SET>\n')
+        submission_strings.append('</SUBMISSION>\n')
+        submission_strings.append('</SUBMISSION_SET>\n')
+        submission_string = ''.join(submission_strings)
 
         self.logger.log_entry('File List:')
         for f in self.file_list:
             self.logger.log_entry('{0} - {1}'.format(f.file_path, f.checksum))
             
         # Write out the curl command to a file for now
-        curl_file = open(self.curl_file_path, 'w')
-        curl_file.write(self.generate_curl_command())
-        curl_file.close()
         
-        # Fix permissions
-        chmod(self.curl_file_path, 0755)
+        curl_string = self.generate_curl_command()
+        
         
         if len(self.errors) > 0:
             self.logger.log_entry('ERRORS FOUND:')
             for error in self.errors:
                 self.logger.log_entry('Error: {0}'.format(error))
+
+        return study_string, sample_string, experiment_string, run_string, submission_string, curl_string
