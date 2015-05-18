@@ -86,7 +86,7 @@ def run_beta_diversity_through_plots(otu_table_fp,
             (output_dir, otu_table_basename,
              sampling_depth, otu_table_ext)
         single_rarefaction_cmd = \
-            'single_rarefaction.py -i %s -o %s -d %d' %\
+            'single_rarefaction.py -i "%s" -o "%s" -d %d' %\
             (otu_table_fp, even_sampled_otu_table_fp, sampling_depth)
         commands.append([
             ('Sample OTU table at %d seqs/sample' % sampling_depth,
@@ -115,7 +115,7 @@ def run_beta_diversity_through_plots(otu_table_fp,
         params_str = get_params_str(bdiv_params_copy)
 
         if tree_fp:
-            params_str = '%s -t %s ' % (params_str, tree_fp)
+            params_str = '%s -t "%s" ' % (params_str, tree_fp)
 
         # Build the beta-diversity command
         if parallel:
@@ -124,12 +124,12 @@ def run_beta_diversity_through_plots(otu_table_fp,
                 params_str += get_params_str(params['parallel'])
             except KeyError:
                 pass
-            beta_div_cmd = 'parallel_beta_diversity.py -i %s -o %s --metrics %s -T %s' %\
+            beta_div_cmd = 'parallel_beta_diversity.py -i "%s" -o "%s" --metrics %s -T %s' %\
                 (otu_table_fp, output_dir, beta_diversity_metric, params_str)
             commands.append(
                 [('Beta Diversity (%s)' % beta_diversity_metric, beta_div_cmd)])
         else:
-            beta_div_cmd = 'beta_diversity.py -i %s -o %s --metrics %s %s' %\
+            beta_div_cmd = 'beta_diversity.py -i "%s" -o "%s" --metrics %s %s' %\
                 (otu_table_fp, output_dir, beta_diversity_metric, params_str)
             commands.append(
                 [('Beta Diversity (%s)' % beta_diversity_metric, beta_div_cmd)])
@@ -140,7 +140,7 @@ def run_beta_diversity_through_plots(otu_table_fp,
             (output_dir, beta_diversity_metric)
         commands.append(
             [('Rename distance matrix (%s)' % beta_diversity_metric,
-              'mv %s %s' % (orig_beta_div_fp, beta_div_fp))])
+              'mv "%s" "%s"' % (orig_beta_div_fp, beta_div_fp))])
         dm_fps.append((beta_diversity_metric, beta_div_fp))
 
         # Prep the principal coordinates command
@@ -150,7 +150,7 @@ def run_beta_diversity_through_plots(otu_table_fp,
         except KeyError:
             params_str = ''
         # Build the principal coordinates command
-        pc_cmd = 'principal_coordinates.py -i %s -o %s %s' %\
+        pc_cmd = 'principal_coordinates.py -i "%s" -o "%s" %s' %\
             (beta_div_fp, pc_fp, params_str)
         commands.append(
             [('Principal coordinates (%s)' % beta_diversity_metric, pc_cmd)])
@@ -167,7 +167,7 @@ def run_beta_diversity_through_plots(otu_table_fp,
                 params_str = ''
             # Build the continuous-coloring 3d plots command
             emperor_command = \
-                'make_emperor.py -i %s -o %s -m %s %s' % (pc_fp,
+                'make_emperor.py -i "%s" -o "%s" -m "%s" %s' % (pc_fp,
                                                           emperor_dir,
                                                           mapping_fp,
                                                           params_str)
@@ -244,13 +244,13 @@ def run_alpha_rarefaction(otu_table_fp,
         params_str += ' %s' % get_params_str(params['parallel'])
         # Build the rarefaction command
         rarefaction_cmd = \
-            'parallel_multiple_rarefactions.py -T -i %s -m %s -x %s -s %s -o %s %s' %\
+            'parallel_multiple_rarefactions.py -T -i "%s" -m %s -x %s -s %s -o "%s" %s' %\
             (otu_table_fp, min_rare_depth, max_rare_depth, step,
              rarefaction_dir, params_str)
     else:
         # Build the rarefaction command
         rarefaction_cmd = \
-            'multiple_rarefactions.py -i %s -m %s -x %s -s %s -o %s %s' %\
+            'multiple_rarefactions.py -i "%s" -m %s -x %s -s %s -o "%s" %s' %\
             (otu_table_fp, min_rare_depth, max_rare_depth, step,
              rarefaction_dir, params_str)
     commands.append([('Alpha rarefaction', rarefaction_cmd)])
@@ -263,17 +263,17 @@ def run_alpha_rarefaction(otu_table_fp,
     except KeyError:
         params_str = ''
     if tree_fp:
-        params_str += ' -t %s' % tree_fp
+        params_str += ' -t "%s"' % tree_fp
     if parallel:
         params_str += ' %s' % get_params_str(params['parallel'])
         # Build the alpha diversity command
         alpha_diversity_cmd = \
-            "parallel_alpha_diversity.py -T -i %s -o %s %s" %\
+            'parallel_alpha_diversity.py -T -i "%s" -o "%s" %s' %\
             (rarefaction_dir, alpha_diversity_dir, params_str)
     else:
         # Build the alpha diversity command
         alpha_diversity_cmd = \
-            "alpha_diversity.py -i %s -o %s %s" %\
+            'alpha_diversity.py -i "%s" -o "%s" %s' %\
             (rarefaction_dir, alpha_diversity_dir, params_str)
 
     commands.append(
@@ -287,13 +287,13 @@ def run_alpha_rarefaction(otu_table_fp,
     except KeyError:
         params_str = ''
     # Build the alpha diversity collation command
-    alpha_collated_cmd = 'collate_alpha.py -i %s -o %s %s' %\
+    alpha_collated_cmd = 'collate_alpha.py -i "%s" -o "%s" %s' %\
         (alpha_diversity_dir, alpha_collated_dir, params_str)
     commands.append([('Collate alpha', alpha_collated_cmd)])
 
     if not retain_intermediate_files:
         commands.append([('Removing intermediate files',
-                          'rm -r %s %s' % (rarefaction_dir, alpha_diversity_dir))])
+                          'rm -r "%s" "%s"' % (rarefaction_dir, alpha_diversity_dir))])
     else:
         commands.append([('Skipping removal of intermediate files.', '')])
 
@@ -310,7 +310,7 @@ def run_alpha_rarefaction(otu_table_fp,
         # Build the make rarefaction plot command(s)
         # for metric in alpha_diversity_metrics:
         make_rarefaction_plot_cmd =\
-            'make_rarefaction_plots.py -i %s -m %s -o %s %s' %\
+            'make_rarefaction_plots.py -i "%s" -m "%s" -o "%s" %s' %\
             (alpha_collated_dir, mapping_fp, rarefaction_plot_dir, params_str)
         commands.append(
             [('Rarefaction plot: %s' % 'All metrics', make_rarefaction_plot_cmd)])
@@ -323,13 +323,13 @@ def run_alpha_rarefaction(otu_table_fp,
         # Build the make rarefaction plot command(s)
         # for metric in alpha_diversity_metrics:
         make_rarefaction_plot_cmd =\
-            'make_rarefaction_plots.py -i %s -m %s -o %s %s --std_type stddev' %\
+            'make_rarefaction_plots.py -i "%s" -m "%s" -o "%s" %s --std_type stddev' %\
             (alpha_collated_dir, mapping_fp, rarefaction_plot_dir_stddev,
              params_str)
         commands.append(
             [('Rarefaction plot: %s' % 'All metrics', make_rarefaction_plot_cmd)])
         make_rarefaction_plot_cmd =\
-            'make_rarefaction_plots.py -i %s -m %s -o %s %s --std_type stderr' %\
+            'make_rarefaction_plots.py -i "%s" -m "%s" -o "%s" %s --std_type stderr' %\
             (alpha_collated_dir, mapping_fp, rarefaction_plot_dir_stderr,
              params_str)
         commands.append(
@@ -403,9 +403,9 @@ def run_jackknifed_beta_diversity(otu_table_fp,
     except KeyError:
         params_str = ''
     if tree_fp:
-        params_str = '%s -t %s' % (params_str, tree_fp)
+        params_str = '%s -t "%s"' % (params_str, tree_fp)
     # Build the beta-diversity command
-    beta_div_cmd = 'beta_diversity.py -i %s -o %s %s' %\
+    beta_div_cmd = 'beta_diversity.py -i "%s" -o "%s" %s' %\
         (otu_table_fp, output_dir, params_str)
     commands.append(
         [('Beta Diversity (%s)' % ', '.join(beta_diversity_metrics), beta_div_cmd)])
@@ -419,7 +419,7 @@ def run_jackknifed_beta_diversity(otu_table_fp,
         params_str = ''
     # Build the rarefaction command
     rarefaction_cmd = \
-        'multiple_rarefactions_even_depth.py -i %s -d %d -o %s %s' %\
+        'multiple_rarefactions_even_depth.py -i "%s" -d %d -o "%s" %s' %\
         (otu_table_fp, seqs_per_sample, rarefaction_dir, params_str)
     commands.append([('Rarefaction', rarefaction_cmd)])
 
@@ -438,7 +438,7 @@ def run_jackknifed_beta_diversity(otu_table_fp,
         except KeyError:
             params_str = ''
         # Build the hierarchical clustering command (for full distance matrix)
-        hierarchical_cluster_cmd = 'upgma_cluster.py -i %s -o %s %s' %\
+        hierarchical_cluster_cmd = 'upgma_cluster.py -i "%s" -o "%s" %s' %\
             (distance_matrix_fp, full_tree_fp, params_str)
         commands.append(
             [('UPGMA on full distance matrix: %s' % beta_diversity_metric,
@@ -457,18 +457,18 @@ def run_jackknifed_beta_diversity(otu_table_fp,
             params_str = {}
         params_str = get_params_str(d) + ' -m %s ' % beta_diversity_metric
         if tree_fp:
-            params_str = '%s -t %s' % (params_str, tree_fp)
+            params_str = '%s -t "%s"' % (params_str, tree_fp)
         if parallel:
             params_str += ' %s' % get_params_str(params['parallel'])
             # Build the parallel beta diversity command (for rarefied OTU
             # tables)
             beta_div_rarefied_cmd = \
-                'parallel_beta_diversity.py -T -i %s -o %s %s' %\
+                'parallel_beta_diversity.py -T -i "%s" -o "%s" %s' %\
                 (rarefaction_dir, dm_dir, params_str)
         else:
             # Build the serial beta diversity command (for rarefied OTU tables)
             beta_div_rarefied_cmd = \
-                'beta_diversity.py -i %s -o %s %s' %\
+                'beta_diversity.py -i "%s" -o "%s" %s' %\
                 (rarefaction_dir, dm_dir, params_str)
         commands.append(
             [('Beta diversity on rarefied OTU tables (%s)' % beta_diversity_metric,
@@ -486,14 +486,14 @@ def run_jackknifed_beta_diversity(otu_table_fp,
         # Build the hierarchical clustering command (for rarefied
         # distance matrices)
         hierarchical_cluster_cmd =\
-            'upgma_cluster.py -i %s -o %s %s' % (dm_dir, upgma_dir, params_str)
+            'upgma_cluster.py -i "%s" -o "%s" %s' % (dm_dir, upgma_dir, params_str)
         commands.append(
             [('UPGMA on rarefied distance matrix (%s)' % beta_diversity_metric,
               hierarchical_cluster_cmd)])
 
         # Build the consensus tree command
         consensus_tree_cmd =\
-            'consensus_tree.py -i %s -o %s %s' %\
+            'consensus_tree.py -i "%s" -o "%s" %s' %\
             (upgma_dir, metric_output_dir + "/rare_upgma_consensus.tre",
              params_str)
         commands.append(
@@ -517,7 +517,7 @@ def run_jackknifed_beta_diversity(otu_table_fp,
             raise RuntimeError(
                 'master tree method "%s" not found' %
                 (master_tree,))
-        tree_compare_cmd = 'tree_compare.py -s %s -m %s -o %s %s' %\
+        tree_compare_cmd = 'tree_compare.py -s "%s" -m "%s" -o "%s" %s' %\
             (upgma_dir, master_tree_fp, tree_compare_dir, params_str)
         commands.append(
             [('Tree compare (%s)' % beta_diversity_metric, tree_compare_cmd)])
@@ -530,7 +530,7 @@ def run_jackknifed_beta_diversity(otu_table_fp,
         except KeyError:
             params_str = ''
         # Build the PCoA command
-        pcoa_cmd = 'principal_coordinates.py -i %s -o %s %s' %\
+        pcoa_cmd = 'principal_coordinates.py -i "%s" -o "%s" %s' %\
             (dm_dir, pcoa_dir, params_str)
         commands.append(
             [('Principal coordinates (%s)' % beta_diversity_metric, pcoa_cmd)])
@@ -542,7 +542,7 @@ def run_jackknifed_beta_diversity(otu_table_fp,
             params_str = get_params_str(params['make_emperor'])
         except KeyError:
             params_str = ''
-        emperor_cmd = 'make_emperor.py -i %s -o %s -m %s %s' %\
+        emperor_cmd = 'make_emperor.py -i "%s" -o "%s" -m "%s" %s' %\
             (pcoa_dir, emperor_dir, mapping_fp, params_str)
         commands.append(
             [('emperor plots (%s)' % beta_diversity_metric, emperor_cmd)])
@@ -620,7 +620,7 @@ def run_summarize_taxa_through_plots(otu_table_fp,
             output_dir, '%s_map.txt' % base_filename)
         # Build the collapse samples command
         collapse_samples_cmd = \
-            "collapse_samples.py -m %s -b %s --output_biom_fp %s --output_mapping_fp %s --collapse_fields '%s' %s" %\
+            'collapse_samples.py -m "%s" -b "%s" --output_biom_fp "%s" --output_mapping_fp "%s" --collapse_fields "%s" %s' %\
             (mapping_fp, otu_table_fp, output_biom_fp, output_map_fp, mapping_cat, params_str)
 
         commands.append(
@@ -644,10 +644,10 @@ def run_summarize_taxa_through_plots(otu_table_fp,
             # for this case we don't have a collapsed mapping file so must
             # handle separately
             sort_otu_table_cmd = \
-                "sort_otu_table.py -i %s -o %s" % (otu_table_fp, sorted_fp)
+                'sort_otu_table.py -i "%s" -o "%s"' % (otu_table_fp, sorted_fp)
         else:
             sort_otu_table_cmd = \
-                "sort_otu_table.py -i %s -o %s -m %s %s" %\
+                'sort_otu_table.py -i "%s" -o "%s" -m "%s" %s' %\
                 (otu_table_fp, sorted_fp, mapping_fp, params_str)
 
         commands.append([('Sort OTU Table', sort_otu_table_cmd)])
@@ -667,7 +667,7 @@ def run_summarize_taxa_through_plots(otu_table_fp,
         sum_taxa_levels = None
 
     # Build the summarize taxonomy command
-    summarize_taxa_cmd = 'summarize_taxa.py -i %s -o %s %s' %\
+    summarize_taxa_cmd = 'summarize_taxa.py -i "%s" -o "%s" %s' %\
         (otu_table_fp, output_dir, params_str)
 
     commands.append([('Summarize Taxonomy', summarize_taxa_cmd)])
@@ -696,7 +696,7 @@ def run_summarize_taxa_through_plots(otu_table_fp,
     # Build the plot taxa summary plot command(s)
 
     plot_taxa_summary_cmd =\
-        'plot_taxa_summary.py -i %s -o %s %s' %\
+        'plot_taxa_summary.py -i "%s" -o "%s" %s' %\
         (','.join(sum_taxa_fps), taxa_summary_plots_dir, params_str)
 
     commands.append(

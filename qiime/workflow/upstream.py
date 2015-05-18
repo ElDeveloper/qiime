@@ -97,7 +97,7 @@ def run_pick_de_novo_otus(input_fp,
         params_str += ' %s' % get_params_str(d)
         otu_picking_script = 'parallel_pick_otus_%s.py' % otu_picking_method
         # Build the OTU picking command
-        pick_otus_cmd = '%s -i %s -o %s -T %s' % (otu_picking_script,
+        pick_otus_cmd = '%s -i "%s" -o "%s" -T %s' % (otu_picking_script,
                                                   input_fp,
                                                   pick_otu_dir,
                                                   params_str)
@@ -107,7 +107,7 @@ def run_pick_de_novo_otus(input_fp,
         except KeyError:
             params_str = ''
         # Build the OTU picking command
-        pick_otus_cmd = 'pick_otus.py -i %s -o %s %s' %\
+        pick_otus_cmd = 'pick_otus.py -i "%s" -o "%s" %s' %\
             (input_fp, pick_otu_dir, params_str)
 
     commands.append([('Pick OTUs', pick_otus_cmd)])
@@ -131,7 +131,7 @@ def run_pick_de_novo_otus(input_fp,
         failures_fasta_fp = '%s/%s_failures.fasta' % \
             (pick_otu_dir, input_basename)
 
-        filter_fasta_cmd = 'filter_fasta.py -f %s -s %s -o %s' %\
+        filter_fasta_cmd = 'filter_fasta.py -f "%s" -s "%s" -o "%s"' %\
             (input_fp, failures_list_fp, failures_fasta_fp)
 
         commands.append([('Generate failures fasta file',
@@ -141,7 +141,7 @@ def run_pick_de_novo_otus(input_fp,
         failure_otu_fp = '%s/%s_failures_otus.txt' % (clustered_failures_dir,
                                                       input_basename)
         # Build the OTU picking command
-        pick_otus_cmd = 'pick_otus.py -i %s -o %s -m %s %s' %\
+        pick_otus_cmd = 'pick_otus.py -i "%s" -o "%s" -m %s %s' %\
             (failures_fasta_fp, clustered_failures_dir,
              failure_otu_picking_method, params_str)
 
@@ -165,7 +165,7 @@ def run_pick_de_novo_otus(input_fp,
     except KeyError:
         params_str = ''
     # Build the representative set picking command
-    pick_rep_set_cmd = 'pick_rep_set.py -i %s -f %s -l %s -o %s %s' %\
+    pick_rep_set_cmd = 'pick_rep_set.py -i "%s" -f "%s" -l "%s" -o "%s" %s' %\
         (otu_fp, input_fp, rep_set_log_fp, rep_set_fp, params_str)
     commands.append([('Pick representative set', pick_rep_set_cmd)])
 
@@ -201,7 +201,7 @@ def run_pick_de_novo_otus(input_fp,
 
         # Build the parallel taxonomy assignment command
         assign_taxonomy_cmd = \
-            'parallel_assign_taxonomy_%s.py -i %s -o %s -T %s' %\
+            'parallel_assign_taxonomy_%s.py -i "%s" -o "%s" -T %s' %\
             (assignment_method, rep_set_fp, assign_taxonomy_dir, params_str)
     else:
         try:
@@ -209,7 +209,7 @@ def run_pick_de_novo_otus(input_fp,
         except KeyError:
             params_str = ''
         # Build the taxonomy assignment command
-        assign_taxonomy_cmd = 'assign_taxonomy.py -o %s -i %s %s' %\
+        assign_taxonomy_cmd = 'assign_taxonomy.py -o "%s" -i "%s" %s' %\
             (assign_taxonomy_dir, rep_set_fp, params_str)
 
     commands.append([('Assign taxonomy', assign_taxonomy_cmd)])
@@ -221,7 +221,7 @@ def run_pick_de_novo_otus(input_fp,
     except KeyError:
         params_str = ''
     # Build the OTU table building command
-    make_otu_table_cmd = 'make_otu_table.py -i %s -t %s -o %s %s' %\
+    make_otu_table_cmd = 'make_otu_table.py -i "%s" -t "%s" -o "%s" %s' %\
         (otu_fp, taxonomy_fp, otu_table_fp, params_str)
 
     commands.append([('Make OTU table', make_otu_table_cmd)])
@@ -229,7 +229,7 @@ def run_pick_de_novo_otus(input_fp,
     if cluster_failures:
         reference_otu_table_fp = '%s/reference_only_otu_table.biom' % output_dir
         # Build the OTU table building command
-        make_otu_table_cmd = 'make_otu_table.py -i %s -t %s -o %s %s' %\
+        make_otu_table_cmd = 'make_otu_table.py -i "%s" -t "%s" -o "%s" %s' %\
             (reference_otu_fp, taxonomy_fp, reference_otu_table_fp, params_str)
 
         commands.append(
@@ -264,7 +264,7 @@ def run_pick_de_novo_otus(input_fp,
         params_str += ' %s' % get_params_str(d)
 
         # Build the parallel pynast alignment command
-        align_seqs_cmd = 'parallel_align_seqs_pynast.py -i %s -o %s -T %s' %\
+        align_seqs_cmd = 'parallel_align_seqs_pynast.py -i "%s" -o "%s" -T %s' %\
             (rep_set_fp, pynast_dir, params_str)
     else:
         try:
@@ -272,7 +272,7 @@ def run_pick_de_novo_otus(input_fp,
         except KeyError:
             params_str = ''
         # Build the pynast alignment command
-        align_seqs_cmd = 'align_seqs.py -i %s -o %s %s' %\
+        align_seqs_cmd = 'align_seqs.py -i "%s" -o "%s" %s' %\
             (rep_set_fp, pynast_dir, params_str)
     commands.append([('Align sequences', align_seqs_cmd)])
 
@@ -284,7 +284,7 @@ def run_pick_de_novo_otus(input_fp,
     except KeyError:
         params_str = ''
     # Build the alignment filtering command
-    filter_alignment_cmd = 'filter_alignment.py -o %s -i %s %s' %\
+    filter_alignment_cmd = 'filter_alignment.py -o "%s" -i "%s" %s' %\
         (pynast_dir, aln_fp, params_str)
     commands.append([('Filter alignment', filter_alignment_cmd)])
 
@@ -295,7 +295,7 @@ def run_pick_de_novo_otus(input_fp,
     except KeyError:
         params_str = ''
     # Build the tree building command
-    make_phylogeny_cmd = 'make_phylogeny.py -i %s -o %s %s' %\
+    make_phylogeny_cmd = 'make_phylogeny.py -i "%s" -o "%s" %s' %\
         (filtered_aln_fp, tree_fp, params_str)
     commands.append([('Build phylogenetic tree', make_phylogeny_cmd)])
 
@@ -407,7 +407,7 @@ def run_pick_closed_reference_otus(
             "Forcing --suppress_new_clusters as this is "
             "closed-reference OTU picking.\n\n")
         # Build the OTU picking command
-        pick_otus_cmd = 'pick_otus.py -i %s -o %s -r %s -m %s %s' %\
+        pick_otus_cmd = 'pick_otus.py -i "%s" -o "%s" -r "%s" -m %s %s' %\
             (input_fp,
              pick_otu_dir,
              refseqs_fp,
@@ -430,7 +430,7 @@ def run_pick_closed_reference_otus(
         except KeyError:
             params_str = ''
         # Build the representative set picking command
-        pick_rep_set_cmd = 'pick_rep_set.py -i %s -f %s -l %s -o %s %s' %\
+        pick_rep_set_cmd = 'pick_rep_set.py -i "%s" -f "%s" -l "%s" -o "%s" %s' %\
             (otu_fp, input_fp, rep_set_log_fp, rep_set_fp, params_str)
         commands.append([('Pick representative set', pick_rep_set_cmd)])
 
@@ -466,7 +466,7 @@ def run_pick_closed_reference_otus(
 
             # Build the parallel taxonomy assignment command
             assign_taxonomy_cmd = \
-                'parallel_assign_taxonomy_%s.py -i %s -o %s -T %s' %\
+                'parallel_assign_taxonomy_%s.py -i "%s" -o "%s" -T %s' %\
                 (assignment_method, rep_set_fp, assign_taxonomy_dir, params_str)
         else:
             try:
@@ -474,7 +474,7 @@ def run_pick_closed_reference_otus(
             except KeyError:
                 params_str = ''
             # Build the taxonomy assignment command
-            assign_taxonomy_cmd = 'assign_taxonomy.py -o %s -i %s %s' %\
+            assign_taxonomy_cmd = 'assign_taxonomy.py -o "%s" -i "%s" %s' %\
                 (assign_taxonomy_dir, rep_set_fp, params_str)
 
         commands.append([('Assign taxonomy', assign_taxonomy_cmd)])
@@ -490,11 +490,11 @@ def run_pick_closed_reference_otus(
     # the precomputed taxonomic assignments that the user passed in,
     # or None.
     if taxonomy_fp:
-        taxonomy_str = '-t %s' % taxonomy_fp
+        taxonomy_str = '-t "%s"' % taxonomy_fp
     else:
         taxonomy_str = ''
     # Build the OTU table building command
-    make_otu_table_cmd = 'make_otu_table.py -i %s %s -o %s %s' %\
+    make_otu_table_cmd = 'make_otu_table.py -i "%s" %s -o "%s" %s' %\
         (otu_fp, taxonomy_str, otu_table_fp, params_str)
 
     commands.append([('Make OTU table', make_otu_table_cmd)])

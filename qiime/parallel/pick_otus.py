@@ -40,7 +40,7 @@ class ParallelPickOtus(ParallelWrapper):
         """Generate command to initiate a poller to monitior/process completed runs
         """
 
-        result = '%s poller.py -f %s -p %s -m %s -d %s -t %d %s' % \
+        result = '%s poller.py -f "%s" -p "%s" -m "%s" -d "%s" -t %d %s' % \
             (command_prefix,
              expected_files_filepath,
              self._process_run_results_f,
@@ -150,7 +150,7 @@ class ParallelPickOtusSortMeRNA(ParallelPickOtus):
             result_filepaths += current_result_filepaths
 
             command = \
-                '%s %s -m sortmerna -i %s -r %s --sortmerna_db %s -o %s --sortmerna_e_value %s -s %s --threads %s %s %s' %\
+                '%s %s -m sortmerna -i "%s" -r "%s" --sortmerna_db "%s" -o "%s" --sortmerna_e_value "%s" -s "%s" --threads %s %s %s' %\
                 (command_prefix,
                  self._script_name,
                  fasta_fp,
@@ -239,7 +239,7 @@ class ParallelPickOtusUclustRef(ParallelPickOtus):
             result_filepaths += current_result_filepaths
 
             command = \
-                '%s %s -i %s -r %s -m uclust_ref --suppress_new_clusters -o %s -s %s %s %s %s --max_accepts %s --max_rejects %s --stepwords %d --w %d %s %s %s %s' %\
+                '%s %s -i "%s" -r "%s" -m uclust_ref --suppress_new_clusters -o "%s" -s "%s" %s %s %s --max_accepts %s --max_rejects %s --stepwords %d --w %d %s %s %s %s' %\
                 (command_prefix,
                  self._script_name,
                  fasta_fp,
@@ -315,7 +315,7 @@ class ParallelPickOtusUsearch61Ref(ParallelPickOtus):
             result_filepaths += current_result_filepaths
 
             command = \
-                '%s %s -i %s -m usearch61_ref --suppress_new_clusters -o %s %s %s %s' %\
+                '%s %s -i "%s" -m usearch61_ref --suppress_new_clusters -o "%s" %s %s %s' %\
                 (command_prefix,
                  self._script_name,
                  fasta_fp,
@@ -368,7 +368,7 @@ class ParallelPickOtusBlast(ParallelPickOtus):
             result_filepaths += current_result_filepaths
 
             command = \
-                '%s %s -i %s -b %s -m blast -o %s -e %s -s %s --min_aligned_percent %s %s %s' %\
+                '%s %s -i "%s" -b "%s" -m blast -o "%s" -e "%s" -s "%s" --min_aligned_percent %s %s %s' %\
                 (command_prefix,
                  self._script_name,
                  fasta_fp,
@@ -534,7 +534,7 @@ class ParallelPickOtusTrie(ParallelPickOtus):
             result_filepaths += current_result_filepaths
 
             command = \
-                '%s -i %s -m trie -o %s %s' %\
+                '%s -i "%s" -m trie -o "%s" %s' %\
                 (self._script_name,
                  fasta_fp,
                  working_dir,

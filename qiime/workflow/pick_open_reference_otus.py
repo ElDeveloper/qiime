@@ -6,7 +6,7 @@ __author__ = "Greg Caporaso"
 __copyright__ = "Copyright 2011, The QIIME project"
 __credits__ = ["Greg Caporaso", "Jai Ram Rideout"]
 __license__ = "GPL"
-__version__ = "1.9.0-dev"
+__version__ = "1.9.0"
 __maintainer__ = "Greg Caporaso"
 __email__ = "gregcaporaso@gmail.com"
 
@@ -109,7 +109,7 @@ def pick_reference_otus(input_fp,
         params_str += ' %s' % get_params_str(params_copy['pick_otus'])
         otu_picking_script = 'parallel_pick_otus_%s.py' % otu_picking_method
         # Build the OTU picking command
-        pick_otus_cmd = '%s -i %s -o %s -r %s -T %s' %\
+        pick_otus_cmd = '%s -i "%s" -o "%s" -r "%s" -T %s' %\
             (otu_picking_script,
              input_fp,
              output_dir,
@@ -126,7 +126,7 @@ def pick_reference_otus(input_fp,
         logger.write(
             "Forcing --suppress_new_clusters as this is reference-based OTU picking.\n\n")
         # Build the OTU picking command
-        pick_otus_cmd = 'pick_otus.py -i %s -o %s -r %s -m %s %s' %\
+        pick_otus_cmd = 'pick_otus.py -i "%s" -o "%s" -r "%s" -m %s %s' %\
             (input_fp,
              output_dir,
              refseqs_fp,
@@ -152,7 +152,7 @@ def pick_denovo_otus(input_fp,
 
     params_str = ' %s' % get_params_str(d)
     # Build the OTU picking command
-    result = 'pick_otus.py -i %s -o %s -m %s %s' %\
+    result = 'pick_otus.py -i "%s" -o "%s" -m %s %s' %\
         (input_fp, output_dir, otu_picking_method, params_str)
 
     return result
@@ -210,7 +210,7 @@ def assign_tax(repset_fasta_fp,
 
         # Build the parallel taxonomy assignment command
         assign_taxonomy_cmd = \
-            'parallel_assign_taxonomy_%s.py -i %s -o %s -T %s' %\
+            'parallel_assign_taxonomy_%s.py -i "%s" -o "%s" -T %s' %\
             (assignment_method, repset_fasta_fp,
              assign_taxonomy_dir, params_str)
     else:
@@ -219,7 +219,7 @@ def assign_tax(repset_fasta_fp,
         except KeyError:
             params_str = ''
         # Build the taxonomy assignment command
-        assign_taxonomy_cmd = 'assign_taxonomy.py -o %s -i %s %s' %\
+        assign_taxonomy_cmd = 'assign_taxonomy.py -o "%s" -i "%s" %s' %\
             (assign_taxonomy_dir, repset_fasta_fp, params_str)
     if exists(assign_taxonomy_dir):
         rmtree(assign_taxonomy_dir)
@@ -283,7 +283,7 @@ def align_and_tree(repset_fasta_fp,
             pass
 
         # Build the parallel pynast alignment command
-        align_seqs_cmd = 'parallel_align_seqs_pynast.py -i %s -o %s -T %s' %\
+        align_seqs_cmd = 'parallel_align_seqs_pynast.py -i "%s" -o "%s" -T %s' %\
             (repset_fasta_fp, pynast_dir, params_str)
     else:
         try:
@@ -291,7 +291,7 @@ def align_and_tree(repset_fasta_fp,
         except KeyError:
             params_str = ''
         # Build the pynast alignment command
-        align_seqs_cmd = 'align_seqs.py -i %s -o %s %s' %\
+        align_seqs_cmd = 'align_seqs.py -i "%s" -o "%s" %s' %\
             (repset_fasta_fp, pynast_dir, params_str)
     commands.append([('Align sequences', align_seqs_cmd)])
 
@@ -303,7 +303,7 @@ def align_and_tree(repset_fasta_fp,
     except KeyError:
         params_str = ''
     # Build the alignment filtering command
-    filter_alignment_cmd = 'filter_alignment.py -o %s -i %s %s' %\
+    filter_alignment_cmd = 'filter_alignment.py -o "%s" -i "%s" %s' %\
         (pynast_dir, aln_fp, params_str)
     commands.append([('Filter alignment', filter_alignment_cmd)])
 
@@ -314,7 +314,7 @@ def align_and_tree(repset_fasta_fp,
     except KeyError:
         params_str = ''
     # Build the tree building command
-    make_phylogeny_cmd = 'make_phylogeny.py -i %s -o %s %s' %\
+    make_phylogeny_cmd = 'make_phylogeny.py -i "%s" -o "%s" %s' %\
         (filtered_aln_fp, tree_fp, params_str)
     commands.append([('Build phylogenetic tree', make_phylogeny_cmd)])
     if exists(tree_fp):
@@ -452,7 +452,7 @@ def iterative_pick_subsampled_open_reference_otus(
     # been a frequent failure, so is sometimes run manually in failed runs.
     otu_table_fp = '%s/otu_table_mc%d.biom' % (output_dir, min_otu_size)
     if not (exists(otu_table_fp) and getsize(otu_table_fp) > 0):
-        merge_cmd = 'merge_otu_tables.py -i %s -o %s' %\
+        merge_cmd = 'merge_otu_tables.py -i "%s" -o "%s"' %\
             (','.join(otu_table_fps), otu_table_fp)
         commands.append([("Merge OTU tables", merge_cmd)])
 
@@ -506,7 +506,7 @@ def iterative_pick_subsampled_open_reference_otus(
                 status_update_callback=status_update_callback)
 
             # Add taxa to otu table
-            add_metadata_cmd = 'biom add-metadata -i %s --observation-metadata-fp %s -o %s --sc-separated taxonomy --observation-header OTUID,taxonomy' %\
+            add_metadata_cmd = 'biom add-metadata -i "%s" --observation-metadata-fp "%s" -o "%s" --sc-separated taxonomy --observation-header OTUID,taxonomy' %\
                 (tax_input_otu_table_fp, taxonomy_fp, otu_table_w_tax_fp)
             commands.append([("Add taxa to OTU table", add_metadata_cmd)])
 
@@ -655,7 +655,7 @@ def pick_subsampled_open_reference_otus(input_fp,
 
             prefiltered_input_fp = '%s/prefiltered_%s%s' %\
                 (prefilter_dir, input_basename, input_ext)
-            filter_fasta_cmd = 'filter_fasta.py -f %s -o %s -s %s -n' %\
+            filter_fasta_cmd = 'filter_fasta.py -f "%s" -o "%s" -s "%s" -n' %\
                 (input_fp, prefiltered_input_fp, prefilter_failures_list_fp)
             commands.append(
                 [('Filter prefilter failures from input', filter_fasta_cmd)])
@@ -700,7 +700,7 @@ def pick_subsampled_open_reference_otus(input_fp,
             (step1_dir, input_basename)
         step1_failures_fasta_fp = \
             '%s/failures.fasta' % step1_dir
-        step1_filter_fasta_cmd = 'filter_fasta.py -f %s -s %s -o %s' %\
+        step1_filter_fasta_cmd = 'filter_fasta.py -f "%s" -s "%s" -o "%s"' %\
             (input_fp, step1_failures_list_fp, step1_failures_fasta_fp)
 
         commands.append([('Generate full failures fasta file',
@@ -715,7 +715,7 @@ def pick_subsampled_open_reference_otus(input_fp,
 
     step1_repset_fasta_fp = \
         '%s/step1_rep_set.fna' % step1_dir
-    step1_pick_rep_set_cmd = 'pick_rep_set.py -i %s -o %s -f %s' %\
+    step1_pick_rep_set_cmd = 'pick_rep_set.py -i "%s" -o "%s" -f "%s"' %\
         (step1_otu_map_fp, step1_repset_fasta_fp, input_fp)
     commands.append([('Pick rep set', step1_pick_rep_set_cmd)])
 
@@ -768,7 +768,7 @@ def pick_subsampled_open_reference_otus(input_fp,
 
         # Prep the rep set picking command for the subsampled failures
         step2_repset_fasta_fp = '%s/step2_rep_set.fna' % step2_dir
-        step2_rep_set_cmd = 'pick_rep_set.py -i %s -o %s -f %s' %\
+        step2_rep_set_cmd = 'pick_rep_set.py -i "%s" -o "%s" -f "%s"' %\
             (step2_otu_map_fp, step2_repset_fasta_fp, step2_input_fasta_fp)
         commands.append(
             [('Pick representative set for subsampled failures', step2_rep_set_cmd)])
@@ -805,7 +805,7 @@ def pick_subsampled_open_reference_otus(input_fp,
         step4_dir = '%s/step4_otus/' % output_dir
         if run_step_2_and_3:
             step3_failures_fasta_fp = '%s/failures_failures.fasta' % step3_dir
-            step3_filter_fasta_cmd = 'filter_fasta.py -f %s -s %s -o %s' %\
+            step3_filter_fasta_cmd = 'filter_fasta.py -f "%s" -s "%s" -o "%s"' %\
                 (step1_failures_fasta_fp,
                  step3_failures_list_fp, step3_failures_fasta_fp)
             commands.append([('Create fasta file of step3 failures',
@@ -833,12 +833,12 @@ def pick_subsampled_open_reference_otus(input_fp,
         # Merge the otu maps, note that we are explicitly using the '>' operator
         # otherwise passing the --force flag on the script interface would
         # append the newly created maps to the map that was previously created
-        cat_otu_tables_cmd = 'cat %s %s %s > %s' %\
+        cat_otu_tables_cmd = 'cat "%s" "%s" "%s" > "%s"' %\
             (step1_otu_map_fp, step3_otu_map_fp,
              step4_otu_map_fp, merged_otu_map_fp)
         commands.append([('Merge OTU maps', cat_otu_tables_cmd)])
         step4_repset_fasta_fp = '%s/step4_rep_set.fna' % step4_dir
-        step4_rep_set_cmd = 'pick_rep_set.py -i %s -o %s -f %s' %\
+        step4_rep_set_cmd = 'pick_rep_set.py -i "%s" -o "%s" -f "%s"' %\
             (step4_otu_map_fp, step4_repset_fasta_fp, failures_fp)
         commands.append(
             [('Pick representative set for subsampled failures', step4_rep_set_cmd)])
@@ -852,13 +852,13 @@ def pick_subsampled_open_reference_otus(input_fp,
             failures_fp = step1_failures_list_fp
             step3_otu_map_fp = ""
 
-        cat_otu_tables_cmd = 'cat %s %s > %s' %\
+        cat_otu_tables_cmd = 'cat "%s" "%s" > "%s"' %\
             (step1_otu_map_fp, step3_otu_map_fp, merged_otu_map_fp)
         commands.append([('Merge OTU maps', cat_otu_tables_cmd)])
 
         # Move the step 3 failures file to the top-level directory
         commands.append([('Move final failures file to top-level directory',
-                          'mv %s %s/final_failures.txt' % (failures_fp, output_dir))])
+                          'mv "%s" "%s/final_failures.txt"' % (failures_fp, output_dir))])
 
     command_handler(commands,
                     status_update_callback,
@@ -922,7 +922,7 @@ def pick_subsampled_open_reference_otus(input_fp,
     new_refseqs_f = open(new_refseqs_fp, 'a')
     new_refseqs_f.write('\n')
     logger.write('# Copy the full input refseqs file to the new refseq file\n' +
-                 'cp %s %s\n\n' % (refseqs_fp, new_refseqs_fp))
+                 'cp "%s" "%s"\n\n' % (refseqs_fp, new_refseqs_fp))
     # iterate over all representative sequences from step2 and step4 and write
     # those corresponding to non-singleton otus to the final representative set
     # file and the new reference sequences file.
@@ -953,7 +953,7 @@ def pick_subsampled_open_reference_otus(input_fp,
     # Prep the make_otu_table.py command
     otu_table_fp = '%s/otu_table_mc%d.biom' % (output_dir, min_otu_size)
 
-    make_otu_table_cmd = 'make_otu_table.py -i %s -o %s' %\
+    make_otu_table_cmd = 'make_otu_table.py -i "%s" -o "%s"' %\
         (otu_no_singletons_fp, otu_table_fp)
     commands.append([("Make the otu table", make_otu_table_cmd)])
     index_links.append(
@@ -1035,7 +1035,7 @@ def pick_subsampled_open_reference_otus(input_fp,
                     _index_headers['taxa_assignments']))
 
             # Add taxa to otu table
-            add_metadata_cmd = 'biom add-metadata -i %s --observation-metadata-fp %s -o %s --sc-separated taxonomy --observation-header OTUID,taxonomy' %\
+            add_metadata_cmd = 'biom add-metadata -i "%s" --observation-metadata-fp "%s" -o "%s" --sc-separated taxonomy --observation-header OTUID,taxonomy' %\
                 (tax_input_otu_table_fp, taxonomy_fp, otu_table_w_tax_fp)
             commands.append([("Add taxa to OTU table", add_metadata_cmd)])
 
